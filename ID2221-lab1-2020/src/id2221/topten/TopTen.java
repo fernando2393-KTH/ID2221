@@ -50,12 +50,39 @@ public class TopTen {
 		TreeMap<Integer, Text> repToRecordMap = new TreeMap<Integer, Text>();
 
 	public void map(Object key, Text value, Context context) throws IOException, InterruptedException {
-	    
+	    try {
+			// TODO: Iterate over the XML entries
+			Map<String, String> map = transformXmlToMap((String) value); // Get tokens of entry
+			if (map.get("Id") != null && !map.get("Id").equals("-1")) {
+				repToRecordMap.put((Integer.parseInt(map.get("Id")), new Text (map.get("Reputation")));
+			}						
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
 
 	protected void cleanup(Context context) throws IOException, InterruptedException {
-	    // Output our ten records to the reducers with a null key
-	    <FILL IN>
+		// Output our ten records to the reducers with a null key
+		// Modification of the comparator method in order to order by reputation
+		List <Entry<Integer, Text>> list = new LinkedList<>(repToRecordMap.entrySet());
+		Collections.sort(list, new Comparator<Map.Entry<Integer, Text>>() {
+			@Override
+			public int compare(Entry<Integer, Text> o1, Entry<Integer, Text> o2) {
+				return Integer.parseInt(o1.getValue()).compareTo(Integer.parseInt(o2.getValue()));
+			}
+		});
+		Map <Integer, Text> sorted = new LinkedHashMap<>(list.size());
+		for (Entry<Integer, Text> entry : list) {
+			sorted.put(entry.getKey(), entry.getValue());
+		}
+		
+		List <Entry<Integer, Text>> entryList = new ArrayList <Map.Entry<Integer, Text>>(sorted.entrySet());
+		for (int i = sorted.size() - 1; i > sorted.size() - 11; i--) {  // Iterate over the higher 10 rep values (last 10 elements)
+			context.write(null, entryList.get(entryList.size()-i));
+		}
+	
+		context.write(new Text(entry.getKey()), new IntWritable(entry.getValue()));
+		
 	}
 	}
 
@@ -70,5 +97,7 @@ public class TopTen {
 
 	public static void main(String[] args) throws Exception {
 	<FILL IN>
+
+
     }
 }
