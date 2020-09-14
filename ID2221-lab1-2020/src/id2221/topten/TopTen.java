@@ -50,7 +50,7 @@ public class TopTen {
 		TreeMap<Integer, Text> repToRecordMap = new TreeMap<Integer, Text>();
 
 	public void map(Object key, Text value, Context context) throws IOException, InterruptedException {
-	    <FILL IN>
+	    
 	}
 
 	protected void cleanup(Context context) throws IOException, InterruptedException {
