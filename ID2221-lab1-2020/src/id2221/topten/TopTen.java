@@ -27,6 +27,9 @@ import org.apache.hadoop.hbase.mapreduce.TableMapReduceUtil;
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
 import org.apache.hadoop.hbase.filter.FirstKeyOnlyFilter;
 
+// New imports
+import java.lang.Math;
+
 public class TopTen {
 	// This helper function parses the stackoverflow into a Map for us.
 	public static Map<String, String> transformXmlToMap(String xml) {
@@ -47,14 +50,16 @@ public class TopTen {
 
 	public static class TopTenMapper extends Mapper<Object, Text, NullWritable, Text> {
 		// Stores a map of user reputation to the record
-		TreeMap<Integer, Text> repToRecordMap = new TreeMap<Integer, Text>();
+		TreeMap<Double, Text> repToRecordMap = new TreeMap<Double, Text>();
 
 	public void map(Object key, Text value, Context context) throws IOException, InterruptedException {
 	    try {
-			// TODO: Iterate over the XML entries
 			Map<String, String> map = transformXmlToMap((String) value); // Get tokens of entry
 			if (map.get("Id") != null && !map.get("Id").equals("-1")) {
-				repToRecordMap.put((Integer.parseInt(map.get("Id")), new Text (map.get("Reputation")));
+				double mapKey = Double.parseDouble(map.get("Reputation")) // Store the reputation as the integer part
+				mapKey += Double.parseDouble(map.get("Id")) / Math.pow(10, map.get("Id").length()) + 
+				(Math.pow(10, -(1 + map.get("Id").length()))); // Combine reputation and ID as unique key
+				repToRecordMap.put((mapKey), new Text (""));  // Write record in TreeMap
 			}						
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -63,35 +68,43 @@ public class TopTen {
 
 	protected void cleanup(Context context) throws IOException, InterruptedException {
 		// Output our ten records to the reducers with a null key
-		// Modification of the comparator method in order to order by reputation
-		List <Entry<Integer, Text>> list = new LinkedList<>(repToRecordMap.entrySet());
-		Collections.sort(list, new Comparator<Map.Entry<Integer, Text>>() {
-			@Override
-			public int compare(Entry<Integer, Text> o1, Entry<Integer, Text> o2) {
-				return Integer.parseInt(o1.getValue()).compareTo(Integer.parseInt(o2.getValue()));
+		int cnt = 0;
+		for (Map.Entry<Double, Text> entry : repToRecordMap.entrySet()) {
+			context.write(NullWritable.get(), new Text (entry.getKey()));  // TODO: Should we create an iterable and write at the end (out of the for loop)? or is it correct like this?
+			cnt++;
+			if (cnt == 10) {
+				break;
 			}
-		});
-		Map <Integer, Text> sorted = new LinkedHashMap<>(list.size());
-		for (Entry<Integer, Text> entry : list) {
-			sorted.put(entry.getKey(), entry.getValue());
 		}
-		
-		List <Entry<Integer, Text>> entryList = new ArrayList <Map.Entry<Integer, Text>>(sorted.entrySet());
-		for (int i = sorted.size() - 1; i > sorted.size() - 11; i--) {  // Iterate over the higher 10 rep values (last 10 elements)
-			context.write(null, entryList.get(entryList.size()-i));
-		}
-	
-		context.write(new Text(entry.getKey()), new IntWritable(entry.getValue()));
-		
 	}
 	}
 
 	public static class TopTenReducer extends TableReducer<NullWritable, Text, NullWritable> {
 		// Stores a map of user reputation to the record
-		private TreeMap<Integer, Text> repToRecordMap = new TreeMap<Integer, Text>();
+		private TreeMap<Double, Text> repToRecordMap = new TreeMap<Double, Text>();
 
 	public void reduce(NullWritable key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
-	    <FILL IN>
+		try {
+			// TODO: Do we receive all the data from the cleanup in an iterable? How do we populate the new treemap?
+			for (Text val : values){
+				repToRecordMap.put(Double.parseDouble(val.get()), new Text ("")); // We give reputation as key so the treeMap orders according to reputation
+			}
+			int cnt = 0;
+			for (Map.Entry<Double, Text> entry : repToRecordMap.entrySet()) {
+				String doubleAsText = entry.getKey();  // Convert double entry to String
+				int reputation = Integer.parseInt(doubleAsText.split("\\.")[0]);  // Get reputation part
+				String aux = doubleAsText.split("\\.")[1];  // Get decimal part 
+				int id = Integer.parseInt(aux.substring(0, aux.length() - 1));  // Extract Id from decimal part
+				// TODO Write using Hbase
+				cnt++;
+				if (cnt == 10) {
+					break;
+				}
+			}
+			context.write()
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
 	}
 
