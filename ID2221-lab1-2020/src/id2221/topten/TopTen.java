@@ -28,6 +28,7 @@ import org.apache.hadoop.hbase.filter.FirstKeyOnlyFilter;
 
 // New imports
 import java.lang.Math;
+import java.util.Collections;
 
 public class TopTen {
 	// This helper function parses the stackoverflow into a Map for us.
@@ -58,6 +59,7 @@ public class TopTen {
 				double mapKey = Double.parseDouble(map.get("Reputation")); // Store the reputation as the integer part
 				mapKey += Double.parseDouble(map.get("Id")) / Math.pow(10, map.get("Id").length()) + 
 				(Math.pow(10, -(1 + map .get("Id").length()))); // Combine reputation and ID as unique key
+				mapKey = Math.round(mapKey * Math.pow(10, map.get("Id").length() + 1)) / Math.pow(10, map.get("Id").length() + 1);
 				repToRecordMap.put((mapKey), new Text (""));  // Write record in TreeMap
 			}						
 		} catch (Exception e) {
@@ -68,8 +70,8 @@ public class TopTen {
 	protected void cleanup(Context context) throws IOException, InterruptedException {
 		// Output our ten records to the reducers with a null key
 		int cnt = 0;
-		for (Map.Entry<Double, Text> entry : repToRecordMap.entrySet()) {
-			context.write(NullWritable.get(), new Text (entry.getKey() + ""));  // TODO: Should we create an iterable and write at the end (out of the for loop)? or is it correct like this?
+		for (double key : repToRecordMap.descendingKeySet()) {
+			context.write(NullWritable.get(), new Text (key + ""));  // TODO: Should we create an iterable and write at the end (out of the for loop)? or is it correct like this?
 			cnt++;
 			if (cnt == 10) {
 				break;
@@ -80,7 +82,7 @@ public class TopTen {
 
 	public static class TopTenReducer extends TableReducer<NullWritable, Text, NullWritable> {
 		// Stores a map of user reputation to the record
-		private TreeMap<Double, Text> repToRecordMap = new TreeMap<Double, Text>();
+		private TreeMap<Double, Text> repToRecordMap = new TreeMap<Double, Text>(Collections.reverseOrder());
 
 	public void reduce(NullWritable key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
 		try {
@@ -95,6 +97,7 @@ public class TopTen {
 				String aux = doubleAsText.split("\\.")[1];  // Get decimal part 
 				int id = Integer.parseInt(aux.substring(0, aux.length() - 1));  // Extract Id from decimal part
 				// TODO: Write using Hbase
+				System.out.println("ID\t" + id + "Reputation\t" + reputation);
 				Put insHBase = new Put(new Text(id + "").getBytes());
 				insHBase.addColumn(Bytes.toBytes("info"), Bytes.toBytes("reputation"), new Text(reputation + "").getBytes());
 				context.write(null, insHBase);
@@ -115,6 +118,8 @@ public class TopTen {
 		job.setJarByClass(TopTen.class);
 		job.setMapperClass(TopTenMapper.class);
 		job.setNumReduceTasks(1);
+		job.setMapOutputKeyClass(NullWritable.class);
+		job.setMapOutputValueClass(Text.class);
 		FileInputFormat.addInputPath(job, new Path(args[0]));
 		TableMapReduceUtil.initTableReducerJob("topten", TopTenReducer.class, job);
 		System.exit(job.waitForCompletion(true) ? 0 : 1);
