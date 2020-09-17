@@ -1,5 +1,4 @@
 package id2221.topten;
-
 import java.io.IOException;
 import java.util.Map;
 import java.util.TreeMap;
@@ -58,7 +57,7 @@ public class TopTen {
 			if (map.get("Id") != null && !map.get("Id").equals("-1")) {
 				double mapKey = Double.parseDouble(map.get("Reputation")) // Store the reputation as the integer part
 				mapKey += Double.parseDouble(map.get("Id")) / Math.pow(10, map.get("Id").length()) + 
-				(Math.pow(10, -(1 + map.get("Id").length()))); // Combine reputation and ID as unique key
+				(Math.pow(10, -(1 + map .get("Id").length()))); // Combine reputation and ID as unique key
 				repToRecordMap.put((mapKey), new Text (""));  // Write record in TreeMap
 			}						
 		} catch (Exception e) {
@@ -91,11 +90,14 @@ public class TopTen {
 			}
 			int cnt = 0;
 			for (Map.Entry<Double, Text> entry : repToRecordMap.entrySet()) {
-				String doubleAsText = entry.getKey();  // Convert double entry to String
+				String doubleAsText = entry.getKey() + "";  // Convert double entry to String
 				int reputation = Integer.parseInt(doubleAsText.split("\\.")[0]);  // Get reputation part
 				String aux = doubleAsText.split("\\.")[1];  // Get decimal part 
 				int id = Integer.parseInt(aux.substring(0, aux.length() - 1));  // Extract Id from decimal part
-				// TODO Write using Hbase
+				// TODO: Write using Hbase
+				Put insHBase = new Put(id.getBytes());
+				insHBase.addColumn(Bytes.toBytes("cf"), Bytes.toBytes("reputation"), Bytes.toBytes(reputation));
+				context.write(null, insHBase);
 				cnt++;
 				if (cnt == 10) {
 					break;
@@ -109,8 +111,17 @@ public class TopTen {
 	}
 
 	public static void main(String[] args) throws Exception {
-	<FILL IN>
-
+		Configuration conf = new Configuration();
+		Job job = Job.getInstance(conf, "top-10 reputation");
+		job.setJarByClass(TopTen.class);
+		job.setMapperClass(TopTenMapper.class);
+		job.setCombinerClass(TopTenReducer.class);
+		job.setReducerClass(TopTenReducer.class);
+		job.setOutputKeyClass(Text.class);
+		job.setOutputValueClass(IntWritable.class);
+		FileInputFormat.addInputPath(job, new Path(args[0]));
+		FileOutputFormat.setOutputPath(job, new Path(args[1]));
+		System.exit(job.waitForCompletion(true) ? 0 : 1);
 
     }
 }
