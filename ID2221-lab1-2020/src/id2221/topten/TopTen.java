@@ -53,9 +53,9 @@ public class TopTen {
 
 	public void map(Object key, Text value, Context context) throws IOException, InterruptedException {
 	    try {
-			Map<String, String> map = transformXmlToMap((String) value); // Get tokens of entry
+			Map<String, String> map = transformXmlToMap(value.toString()); // Get tokens of entry
 			if (map.get("Id") != null && !map.get("Id").equals("-1")) {
-				double mapKey = Double.parseDouble(map.get("Reputation")) // Store the reputation as the integer part
+				double mapKey = Double.parseDouble(map.get("Reputation")); // Store the reputation as the integer part
 				mapKey += Double.parseDouble(map.get("Id")) / Math.pow(10, map.get("Id").length()) + 
 				(Math.pow(10, -(1 + map .get("Id").length()))); // Combine reputation and ID as unique key
 				repToRecordMap.put((mapKey), new Text (""));  // Write record in TreeMap
@@ -69,7 +69,7 @@ public class TopTen {
 		// Output our ten records to the reducers with a null key
 		int cnt = 0;
 		for (Map.Entry<Double, Text> entry : repToRecordMap.entrySet()) {
-			context.write(NullWritable.get(), new Text (entry.getKey()));  // TODO: Should we create an iterable and write at the end (out of the for loop)? or is it correct like this?
+			context.write(NullWritable.get(), new Text (entry.getKey() + ""));  // TODO: Should we create an iterable and write at the end (out of the for loop)? or is it correct like this?
 			cnt++;
 			if (cnt == 10) {
 				break;
@@ -86,24 +86,23 @@ public class TopTen {
 		try {
 			// TODO: Do we receive all the data from the cleanup in an iterable? How do we populate the new treemap?
 			for (Text val : values){
-				repToRecordMap.put(Double.parseDouble(val.get()), new Text ("")); // We give reputation as key so the treeMap orders according to reputation
+				repToRecordMap.put(Double.parseDouble(val.toString()), new Text ("")); // We give reputation as key so the treeMap orders according to reputation
 			}
 			int cnt = 0;
 			for (Map.Entry<Double, Text> entry : repToRecordMap.entrySet()) {
-				String doubleAsText = entry.getKey() + "";  // Convert double entry to String
+				String doubleAsText = entry.getKey().toString();
 				int reputation = Integer.parseInt(doubleAsText.split("\\.")[0]);  // Get reputation part
 				String aux = doubleAsText.split("\\.")[1];  // Get decimal part 
 				int id = Integer.parseInt(aux.substring(0, aux.length() - 1));  // Extract Id from decimal part
 				// TODO: Write using Hbase
-				Put insHBase = new Put(id.getBytes());
-				insHBase.addColumn(Bytes.toBytes("cf"), Bytes.toBytes("reputation"), Bytes.toBytes(reputation));
+				Put insHBase = new Put(new Text(id + "").getBytes());
+				insHBase.addColumn(Bytes.toBytes("info"), Bytes.toBytes("reputation"), new Text(reputation + "").getBytes());
 				context.write(null, insHBase);
 				cnt++;
 				if (cnt == 10) {
 					break;
 				}
 			}
-			context.write()
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -111,16 +110,13 @@ public class TopTen {
 	}
 
 	public static void main(String[] args) throws Exception {
-		Configuration conf = new Configuration();
+		Configuration conf = HBaseConfiguration.create();
 		Job job = Job.getInstance(conf, "top-10 reputation");
 		job.setJarByClass(TopTen.class);
 		job.setMapperClass(TopTenMapper.class);
-		job.setCombinerClass(TopTenReducer.class);
-		job.setReducerClass(TopTenReducer.class);
-		job.setOutputKeyClass(Text.class);
-		job.setOutputValueClass(IntWritable.class);
+		job.setNumReduceTasks(1);
 		FileInputFormat.addInputPath(job, new Path(args[0]));
-		FileOutputFormat.setOutputPath(job, new Path(args[1]));
+		TableMapReduceUtil.initTableReducerJob("topten", TopTenReducer.class, job);
 		System.exit(job.waitForCompletion(true) ? 0 : 1);
 
     }
