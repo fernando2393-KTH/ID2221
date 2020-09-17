@@ -71,7 +71,7 @@ public class TopTen {
 		// Output our ten records to the reducers with a null key
 		int cnt = 0;
 		for (double key : repToRecordMap.descendingKeySet()) {
-			context.write(NullWritable.get(), new Text (key + ""));  // TODO: Should we create an iterable and write at the end (out of the for loop)? or is it correct like this?
+			context.write(NullWritable.get(), new Text (key + ""));
 			cnt++;
 			if (cnt == 10) {
 				break;
@@ -86,7 +86,6 @@ public class TopTen {
 
 	public void reduce(NullWritable key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
 		try {
-			// TODO: Do we receive all the data from the cleanup in an iterable? How do we populate the new treemap?
 			for (Text val : values){
 				repToRecordMap.put(Double.parseDouble(val.toString()), new Text ("")); // We give reputation as key so the treeMap orders according to reputation
 			}
@@ -96,9 +95,8 @@ public class TopTen {
 				int reputation = Integer.parseInt(doubleAsText.split("\\.")[0]);  // Get reputation part
 				String aux = doubleAsText.split("\\.")[1];  // Get decimal part 
 				int id = Integer.parseInt(aux.substring(0, aux.length() - 1));  // Extract Id from decimal part
-				// TODO: Write using Hbase
-				System.out.println("ID\t" + id + "Reputation\t" + reputation);
-				Put insHBase = new Put(new Text(id + "").getBytes());
+				Put insHBase = new Put(new Text(cnt + "").getBytes());
+				insHBase.addColumn(Bytes.toBytes("info"), Bytes.toBytes("id"), new Text(id + "").getBytes());
 				insHBase.addColumn(Bytes.toBytes("info"), Bytes.toBytes("reputation"), new Text(reputation + "").getBytes());
 				context.write(null, insHBase);
 				cnt++;
