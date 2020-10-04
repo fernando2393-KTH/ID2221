@@ -23,7 +23,7 @@ object KafkaSpark {
     // connect to Cassandra and make a keyspace and table as explained in the document
     val cluster = Cluster.builder().addContactPoint("127.0.0.1").build()
     val session = cluster.connect()
-    session.execute("CREATE KEYSPACE IF NOT EXISTS avg_space WITH REPLICATION = { ’class’ : ’SimpleStrategy’, ’replication_factor’ : 1 };")
+    session.execute("CREATE KEYSPACE IF NOT EXISTS avg_space WITH REPLICATION = { 'class' : 'SimpleStrategy', 'replication_factor' : 1 };")
 	session.execute("CREATE TABLE IF NOT EXISTS avg_space.avg (word text PRIMARY KEY, count float);")
 
     // make a connection to Kafka and read (key, value) pairs from it
@@ -37,12 +37,11 @@ object KafkaSpark {
     val messages = KafkaUtils.createDirectStream[String, String, StringDecoder, StringDecoder](ssc, kafkaConf, topic)
 	val message_vals = messages.map(message => message._2)
 	val pairs = message_vals.map(_.split(",")).map(x => (x(0), x(1).toDouble))
-	
 	var hashMap = scala.collection.mutable.Map[String, Integer]()
     // measure the average value for each key in a stateful manner
     def mappingFunc(key: String, value: Option[Double], state: State[Double]): (String, Double) = {
-		val newAvg = value.getOrElse(0).asInstanceOf[Double]
-		val oldAvg = state.getOption.getOrElse(0).asInstanceOf[Double]
+		val newAvg = value.getOrElse(0.0)
+		val oldAvg = state.getOption.getOrElse(0.0)
 		var avg = 0.0
 		if (hashMap.contains(key)) {
 			val cnt = hashMap(key)
