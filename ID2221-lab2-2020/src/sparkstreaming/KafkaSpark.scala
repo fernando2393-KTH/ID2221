@@ -35,16 +35,16 @@ object KafkaSpark {
 						"group.id" -> "kafka-spark-streaming", "zookeeper.connection.timeout.ms" -> "1000")
 	val topic = Set("avg")
     val messages = KafkaUtils.createDirectStream[String, String, StringDecoder, StringDecoder](ssc, kafkaConf, topic)
-	var pairs = messages.map(message => message._2)
-	pairs = pairs.map(_.split(",")).map(x => (x(0), x(1).toDouble))
+	val message_vals = messages.map(message => message._2)
+	val pairs = message_vals.map(_.split(",")).map(x => (x(0), x(1).toDouble))
 	
-	var hashMap = new HashMap()
+	var hashMap = scala.collection.mutable.Map[String, Integer]()
     // measure the average value for each key in a stateful manner
     def mappingFunc(key: String, value: Option[Double], state: State[Double]): (String, Double) = {
-		val newAvg = value.getOrElse(0)
-		val oldAvg = state.getOption.getOrElse(0)
-		var avg = 0
-		if (hashMap.keySet.exists(_ == key)) {
+		val newAvg = value.getOrElse(0).asInstanceOf[Double]
+		val oldAvg = state.getOption.getOrElse(0).asInstanceOf[Double]
+		var avg = 0.0
+		if (hashMap.contains(key)) {
 			val cnt = hashMap(key)
 			avg = (newAvg + oldAvg * cnt) / (cnt + 1)
 			hashMap(key) = cnt + 1 
@@ -57,7 +57,7 @@ object KafkaSpark {
 		(key, avg)
     }
 
-    val stateDstream = pairs.mapWithState(StateSpec.function(mappingFunc))
+    val stateDstream = pairs.mapWithState(StateSpec.function(mappingFunc _))
 
     // store the result in Cassandra
     stateDstream.saveToCassandra("avg_space", "avg", SomeColumns("word", "count"))
