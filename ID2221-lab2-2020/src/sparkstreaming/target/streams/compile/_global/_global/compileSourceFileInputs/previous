@@ -1,0 +1,1 @@
+["sbt.Task[scala.collection.immutable.Map[java.lang.String, scala.collection.Seq[scala.Tuple2[java.nio.file.Path, sbt.nio.FileStamp]]]]",{"2.11.8":{"hashes":[["/home/fernando/Desktop/ID2221/ID2221-lab2-2020/src/sparkstreaming/KafkaSpark.scala","474e4d3df666ec39302f5bebf0bacde1b12078d6"]],"lastModifiedTimes":[]}}]

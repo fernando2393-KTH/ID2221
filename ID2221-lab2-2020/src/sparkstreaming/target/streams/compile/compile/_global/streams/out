@@ -1,0 +1,6 @@
+[0m[[0m[31merror[0m] [0m[0m/home/fernando/Desktop/ID2221/ID2221-lab2-2020/src/sparkstreaming/KafkaSpark.scala:60:62: missing argument list for method mappingFunc[0m
+[0m[[0m[31merror[0m] [0m[0mUnapplied methods are only converted to functions when a function type is expected.[0m
+[0m[[0m[31merror[0m] [0m[0mYou can make this conversion explicit by writing `mappingFunc _` or `mappingFunc(_,_,_)` instead of `mappingFunc`.[0m
+[0m[[0m[31merror[0m] [0m[0m    val stateDstream = pairs.mapWithState(StateSpec.function(mappingFunc))[0m
+[0m[[0m[31merror[0m] [0m[0m                                                             ^[0m
+[0m[[0m[31merror[0m] [0m[0mone error found[0m
